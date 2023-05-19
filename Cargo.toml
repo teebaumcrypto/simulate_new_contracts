@@ -1,0 +1,37 @@
+[package]
+name = "simulate-new-contracts"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+#async runtime
+tokio = { version = "1.28.1", features = ["full"] }
+futures = "0.3"
+# easy error handling
+anyhow = "1.0"
+
+#lazy_static = "1.4.0"
+# Tracing for logging
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+
+# used for forking chain
+anvil = { git = "https://github.com/foundry-rs/foundry", rev = "c331b5ee" }
+anvil-core = { git = "https://github.com/foundry-rs/foundry", rev = "c331b5ee", features = [
+    "fastrlp",
+    "serde",
+] }
+foundry-utils = { git = "https://github.com/foundry-rs/foundry", rev = "c331b5ee" }
+
+ethers = { version = "2.0.4", default-features = true, features = ["ipc"] }
+
+[dev-dependencies]
+criterion = { version = "0.4.0", features = ["html_reports", "async_tokio"] }
+
+# if we want to benchmark stuff
+# create folder+file /benches/bench.rs
+#[[bench]]
+#name = "bench"
+#harness = false
