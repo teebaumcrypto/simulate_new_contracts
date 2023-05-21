@@ -4,6 +4,8 @@ use std::time::Duration;
 // https://github.com/foundry-rs/foundry/blob/master/anvil/tests/it/fork.rs
 use anvil::{eth::EthApi, spawn, NodeConfig, NodeHandle};
 
+use crate::SETTINGS;
+
 
 const BLOCK_NUMBER: u64 = 17_296_515u64;
 
@@ -36,7 +38,7 @@ impl LocalFork {
 
 pub fn fork_config() -> NodeConfig {
     NodeConfig::default()
-        .with_eth_rpc_url(Some("http:/127.0.0.1:8545"))
+        .with_eth_rpc_url(Some(&SETTINGS.rpc_url))
         .with_fork_block_number(Some(BLOCK_NUMBER))
         .with_blocktime(Some(Duration::from_secs(1)))
 }

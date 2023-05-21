@@ -2,11 +2,14 @@ use std::{time::Duration};
 
 use anvil::spawn;
 use anyhow::Result;
-use simulate_new_contracts::anvil_fork::localfork::fork_config;
+use simulate_new_contracts::{anvil_fork::localfork::fork_config, preload_lazy_static};
 use tokio::runtime::Runtime;
 use tracing::info;
 
 fn main() -> Result<()> {
+    // preload all global variables 
+    preload_lazy_static();
+    
     // Create the runtime
     // we don't want to run full async
     let rt: Runtime = Runtime::new().unwrap();
