@@ -38,7 +38,7 @@ fn main() -> Result<()> {
     let rt: Runtime = Runtime::new().unwrap();
 
     // spawn a blocked thread so the program won't quit
-    let _ = rt.block_on(async move {
+    rt.block_on(async move {
         let (api, handle) = spawn(fork_config(block_number)).await;
 
         let provider: Arc<ethers::providers::Provider<ethers::providers::Http>> =

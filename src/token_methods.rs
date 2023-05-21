@@ -21,7 +21,7 @@ pub async fn create_and_send_tx(
         .fill_transaction(&mut typed_tx, None)
         .await
         .unwrap();
-    let tx = provider.send_transaction(typed_tx, None).await.unwrap();
+    let _ = provider.send_transaction(typed_tx, None).await;
     Ok(())
 }
 
@@ -45,24 +45,24 @@ pub async fn get_owner_with_balance(
             if let Ok(balance_owner) = token.balance_of(owner).call().await {
                 // if the balance of the owner is bigger than zero, we take this
                 if balance_owner > U256::zero() {
-                    return Ok((owner, balance_owner));
+                    Ok((owner, balance_owner))
                 }
                 // if balance owner isn't bigger than 0 we check balance of creator
                 else if let Ok(balance_creator) = token.balance_of(creator).call().await {
                     if balance_creator > U256::zero() {
-                        return Ok((owner, balance_creator));
+                        Ok((owner, balance_creator))
                     } else {
-                        return Err(anyhow!("Balance of creator and owner is zero"));
+                        Err(anyhow!("Balance of creator and owner is zero"))
                     }
                 } else {
-                    return Err(anyhow!(
+                    Err(anyhow!(
                         "Couldn't get balance of creator and owner balance is zero"
-                    ));
+                    ))
                 }
             }
             // we couldn't get balance of owner via call, which should indicate it's not a correct erc20
             else {
-                return Err(anyhow!("not correct erc20"));
+                Err(anyhow!("not correct erc20"))
             }
         }
         // creator is owner
@@ -70,12 +70,12 @@ pub async fn get_owner_with_balance(
             // get balance of owner
             if let Ok(balance_owner) = token.balance_of(owner).call().await {
                 if balance_owner > U256::zero() {
-                    return Ok((owner, balance_owner));
+                    Ok((owner, balance_owner))
                 } else {
-                    return Err(anyhow!("Balance of owner is zero"));
+                    Err(anyhow!("Balance of owner is zero"))
                 }
             } else {
-                return Err(anyhow!("not correct erc20"));
+                Err(anyhow!("not correct erc20"))
             }
         }
     } else {
@@ -83,12 +83,12 @@ pub async fn get_owner_with_balance(
         // get balance of owner
         if let Ok(balance_creator) = token.balance_of(creator).call().await {
             if balance_creator > U256::zero() {
-                return Ok((creator, balance_creator));
+                Ok((creator, balance_creator))
             } else {
-                return Err(anyhow!("Balance of owner is zero"));
+                Err(anyhow!("Balance of owner is zero"))
             }
         } else {
-            return Err(anyhow!("balance of function does not exist"));
+            Err(anyhow!("balance of function does not exist"))
         }
     }
 }
