@@ -8,7 +8,7 @@ use ethers::{
 };
 use simulate_new_contracts::{
     anvil_fork::{
-        abi::{TokenContract, UniswapV2Router},
+        abi::{TokenContract, UniswapV2Router, PairContract, UniswapV2Factory},
         localfork::fork_config,
     },
     preload_lazy_static,
@@ -95,6 +95,18 @@ fn main() -> Result<()> {
 
         // mine new block
         let _ = api.evm_mine(None).await;
+
+        // initiate the uniswap factory contract with a factory ABI
+        let factory = UniswapV2Factory::new(SETTINGS.factory, Arc::clone(&provider));
+        // check if creator is owner of contract
+        if let Ok(pair) = factory.get_pair(SETTINGS.weth, token).call().await {
+                info!("pair: {:?}", pair);
+                // initiate the uniswap pair contract with a pair ABI
+                let pair = PairContract::new(pair, Arc::clone(&provider));
+                if let Ok(reserves) = pair.get_reserves().call().await {
+                    info!("reserves: {:?}", reserves);
+                }
+            }
         info!("executed successfully");
     });
 
