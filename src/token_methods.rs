@@ -1,8 +1,18 @@
 use anyhow::{Result, anyhow};
 use std::sync::Arc;
-use ethers::{types::{H160, U256}};
+use ethers::{types::{H160, U256, transaction::eip2718::TypedTransaction}, providers::Middleware};
 
 use crate::anvil_fork::abi::TokenContract;
+
+pub async fn create_and_send_tx(provider: Arc<ethers::providers::Provider<ethers::providers::Http>>, mut typed_tx: TypedTransaction, from: H160, value: Option<U256>) -> Result<()> {
+    if let Some(eth_value) = value {
+        typed_tx.set_value(eth_value);
+    };
+    typed_tx.set_from(from);
+    provider.fill_transaction(&mut typed_tx, None).await.unwrap();
+    let tx = provider.send_transaction(typed_tx, None).await.unwrap();
+    Ok(())
+}
 
 /// get the owner balance:
 /// check if creator is owner -> return(owner,balanceOf(owner))
