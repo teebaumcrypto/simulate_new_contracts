@@ -78,7 +78,11 @@ fn main() -> Result<()> {
         // convert call to typed transaction
         let tx: TypedTransaction = approve_call.tx;
         // fill tx with infos + send it
-        let _ = create_and_send_tx(Arc::clone(&provider), tx.clone(), real_owner, None).await;
+        match create_and_send_tx(Arc::clone(&provider), tx, real_owner, None).await {
+            Ok(_) => info!("approval tx ok, waiting for new block"),
+            Err(e) => warn!("failed with error: {:?}", e)
+        }
+
 
         // add Liquidity: impersonate real owner and add liquidity
         // create router with abi to interact (addLiquidity)
@@ -95,7 +99,7 @@ fn main() -> Result<()> {
         let tx: TypedTransaction = add_liquidity_call.tx;
         // fill tx with infos + send it
         match create_and_send_tx(Arc::clone(&provider), tx, real_owner, Some(*ONE_ETH)).await {
-            Ok(_) => info!("tx ok, waiting for new block"),
+            Ok(_) => info!("liquidity add tx ok, waiting for new block"),
             Err(e) => warn!("failed with error: {:?}", e)
         }
 
@@ -113,6 +117,14 @@ fn main() -> Result<()> {
                 info!("reserves: {:?}", reserves);
             }
         }
+        
+        // create approve transaction
+        let set_trading_call = token_contract.set_trading(true);
+        // convert call to typed transaction
+        let tx: TypedTransaction = set_trading_call.tx;
+        // fill tx with infos + send it
+        let _ = create_and_send_tx(Arc::clone(&provider), tx, real_owner, None).await;
+
 
         // now we can check if we can execute swaps with another wallet
         let random_addr = Address::random();
@@ -134,7 +146,26 @@ fn main() -> Result<()> {
             Ok(_) => info!("tx ok, waiting for new block"),
             Err(e) => warn!("failed with error: {:?}", e)
         }
-
+        let swap_call = uniswap_router.swap_eth_for_exact_tokens(
+            U256::from(balance/100),
+            vec![SETTINGS.weth,token],
+            random_addr,
+            U256::from(1984669967u64),
+        );
+        // convert call to typed transaction
+        let swap_tx: TypedTransaction = swap_call.tx;
+        match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH)).await {
+            Ok(_) => {
+                // mine new block
+                let _ = api.evm_mine(None).await;
+                
+                if let Ok(token_balance_random_addr) = token_contract.balance_of(random_addr).call().await {
+                    info!("token-balance of random addr: {}", token_balance_random_addr);
+                }
+                info!("swap tx (1%) ok, waiting for new block");
+            },
+            Err(e) => warn!("failed with error: {:?}", e)
+        }
 
         // mine new block
         let _ = api.evm_mine(None).await;

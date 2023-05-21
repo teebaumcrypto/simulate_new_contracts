@@ -14,6 +14,7 @@ abigen!(
         function addLiquidity(address tokenA, address tokenB, uint amountADesired, uint amountBDesired, uint amountAMin, uint amountBMin, address to, uint deadline) external
         function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external
         function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)(uint[] memory amounts)
+        function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)(uint[] memory amounts)
     ]"#,
 );
 
@@ -23,6 +24,7 @@ abigen!(
         balanceOf(address)(uint256)
         owner()(address)
         approve(address spender, uint256 amount)(bool)
+        setTrading(bool _tradingOpen)
     ]"#,
 );
 
