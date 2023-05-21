@@ -39,24 +39,44 @@ fn main() -> Result<()> {
         } else {
             panic!("Couldn't fetch owner with balance");
         }
-        
         println!("real_owner:    {:?}", real_owner);
         println!("balance owner: {:?}", balance);
-
         // impersonate real owner
         api.anvil_impersonate_account(real_owner).await.unwrap();
         
-        let initial_balance = provider.get_balance(real_owner, None).await.unwrap();
-        info!("initial balance: {} on block: {}", initial_balance, api.block_number().unwrap());
-
-        // mine new block
-        let _ = api.evm_mine(None).await;
-
         // add 10 eth for creator address
         api.anvil_set_balance(real_owner, U256::from(10e18 as u64)).await.unwrap();
         let faked_balance = provider.get_balance(real_owner, None).await.unwrap();
         info!("faked_balance: {} on block: {}", faked_balance, api.block_number().unwrap());
 
+        // create token contract instance via ABI
+        let token_contract = TokenContract::new(token, Arc::clone(&provider));
+        // create approve transaction
+        let approve_call = token_contract.approve(SETTINGS.router, U256::MAX);
+        // convert call to typed transaction
+        let tx: TypedTransaction = approve_call.tx;
+        // fill tx with infos + send it
+        let _ = create_and_send_tx(Arc::clone(&provider), tx.clone(), real_owner, None).await;
+        
+        // add Liquidity: impersonate real owner and add liquidity
+        // create router with abi to interact (addLiquidity)
+        let uniswap_router = UniswapV2Router::new(SETTINGS.router, Arc::clone(&provider));
+        let one_eth = U256::from(1000000000000000000u64);
+        let add_liquidity_call = uniswap_router.add_liquidity_eth(
+            token, 
+            balance, 
+            balance, 
+            one_eth, 
+            real_owner, 
+            U256::from(1984669967u64)
+        );
+        // convert call to typed transaction
+        let tx: TypedTransaction = add_liquidity_call.tx;
+        // fill tx with infos + send it
+        let _ = create_and_send_tx(Arc::clone(&provider), tx, real_owner, Some(one_eth)).await;
+
+        // mine new block
+        let _ = api.evm_mine(None).await;
         info!("executed successfully");
     });
 
