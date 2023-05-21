@@ -24,6 +24,7 @@ fn main() -> Result<()> {
         //let provider_balance = provider.get_balance(addr, None).await.unwrap();
         let block = api.block_number().unwrap();
         info!("block api:      {}", block);
+        let _ = api.evm_mine(None).await;
 
         tokio::time::sleep(Duration::from_millis(1500)).await;
         let block = api.block_number().unwrap();

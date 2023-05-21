@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 // File copied from:
 // https://github.com/foundry-rs/foundry/blob/master/anvil/tests/it/fork.rs
 use anvil::{eth::EthApi, spawn, NodeConfig, NodeHandle};
@@ -40,5 +38,4 @@ pub fn fork_config() -> NodeConfig {
     NodeConfig::default()
         .with_eth_rpc_url(Some(&SETTINGS.rpc_url))
         .with_fork_block_number(Some(BLOCK_NUMBER))
-        .with_blocktime(Some(Duration::from_secs(1)))
 }
