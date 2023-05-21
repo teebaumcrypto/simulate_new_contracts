@@ -14,3 +14,11 @@ abigen!(
         function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external
     ]"#,
 );
+
+abigen!(
+    TokenContract,
+    r#"[
+        balanceOf(address)(uint256)
+        owner()(address)
+    ]"#,
+);

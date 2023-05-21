@@ -3,9 +3,9 @@ use std::{str::FromStr, sync::Arc};
 use anvil::spawn;
 use anyhow::Result;
 use ethers::{types::{H160, U256}, providers::Middleware};
-use simulate_new_contracts::{anvil_fork::{localfork::fork_config}, preload_lazy_static};
+use simulate_new_contracts::{anvil_fork::{localfork::fork_config}, preload_lazy_static, token_methods::get_owner_with_balance};
 use tokio::runtime::Runtime;
-use tracing::info;
+use tracing::{info};
 
 fn main() -> Result<()> {
     // preload all global variables 
@@ -19,8 +19,8 @@ fn main() -> Result<()> {
     */
     // TODO: creator, token, block_number has to be from cli args
     let creator = H160::from_str("0x5b19282ee1a76b1caca1fc4c437a2499229459df").unwrap();
-    let _token = H160::from_str("0x2706fd8a70affe732e6c6955d8c47f875b754d2f").unwrap();
-    let block_number = 17307367u64;    
+    let token = H160::from_str("0x2706fd8a70affe732e6c6955d8c47f875b754d2f").unwrap();
+    let block_number = 17307367u64;
     
     // Create the runtime
     // we don't want to run full async
@@ -30,15 +30,24 @@ fn main() -> Result<()> {
     let _ = rt.block_on(async move{
         let (api, handle) = spawn(fork_config(block_number)).await;
         
-        let provider = Arc::new(handle.http_provider());
-        let block = api.block_number().unwrap();
+        let provider: Arc<ethers::providers::Provider<ethers::providers::Http>> = Arc::new(handle.http_provider());
+        let real_owner: H160;
+        let balance: U256;
+        if let Ok(tuple) = get_owner_with_balance(provider.clone(), token, creator).await {
+            real_owner = tuple.0;
+            balance = tuple.1;
+        } else {
+            panic!("Couldn't fetch owner with balance");
+        }
         
-        // TODO: check if creator is owner of contract, else take owner
+        println!("real_owner:    {:?}", real_owner);
+        println!("balance owner: {:?}", balance);
+
         // impersonate real owner
         api.anvil_impersonate_account(creator).await.unwrap();
         
         let initial_balance = provider.get_balance(creator, None).await.unwrap();
-        info!("initial balance: {} on block: {}", initial_balance, block);
+        info!("initial balance: {} on block: {}", initial_balance, api.block_number().unwrap());
 
         // mine new block
         let _ = api.evm_mine(None).await;
@@ -46,8 +55,7 @@ fn main() -> Result<()> {
         // add 10 eth for creator address
         api.anvil_set_balance(creator, U256::from(10e18 as u64)).await.unwrap();
         let faked_balance = provider.get_balance(creator, None).await.unwrap();
-        let block = api.block_number().unwrap();
-        info!("faked_balance: {} on block: {}", faked_balance, block);
+        info!("faked_balance: {} on block: {}", faked_balance, api.block_number().unwrap());
 
         info!("executed successfully");
     });
