@@ -35,4 +35,5 @@ pub fn fork_config(block_number: u64) -> NodeConfig {
     NodeConfig::default()
         .with_eth_rpc_url(Some(&SETTINGS.rpc_url))
         .with_fork_block_number(Some(block_number))
+        .with_no_mining(true)
 }
