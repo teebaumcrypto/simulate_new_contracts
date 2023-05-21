@@ -13,6 +13,7 @@ abigen!(
     r#"[
         function addLiquidity(address tokenA, address tokenB, uint amountADesired, uint amountBDesired, uint amountAMin, uint amountBMin, address to, uint deadline) external
         function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external
+        function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)(uint[] memory amounts)
     ]"#,
 );
 
