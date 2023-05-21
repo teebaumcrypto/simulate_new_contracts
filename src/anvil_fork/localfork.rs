@@ -27,7 +27,12 @@ impl LocalFork {
 
         let (fork_api, fork_handle) =
             spawn(fork.with_eth_rpc_url(Some(origin_handle.http_endpoint()))).await;
-        Self { origin_api, origin_handle, fork_api, fork_handle }
+        Self {
+            origin_api,
+            origin_handle,
+            fork_api,
+            fork_handle,
+        }
     }
 }
 

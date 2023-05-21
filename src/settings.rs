@@ -22,7 +22,7 @@ struct Args {
 pub struct Settings {
     pub rpc_url: String,
     pub router: H160,
-    pub factory: H160
+    pub factory: H160,
 }
 
 impl Default for Settings {

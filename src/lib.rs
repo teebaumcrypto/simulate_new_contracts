@@ -3,7 +3,7 @@ pub mod settings;
 pub mod token_methods;
 
 use crate::settings::Settings;
-use lazy_static::{lazy_static};
+use lazy_static::lazy_static;
 
 pub fn preload_lazy_static() {
     // load and print the settings
