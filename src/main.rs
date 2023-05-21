@@ -44,17 +44,17 @@ fn main() -> Result<()> {
         println!("balance owner: {:?}", balance);
 
         // impersonate real owner
-        api.anvil_impersonate_account(creator).await.unwrap();
+        api.anvil_impersonate_account(real_owner).await.unwrap();
         
-        let initial_balance = provider.get_balance(creator, None).await.unwrap();
+        let initial_balance = provider.get_balance(real_owner, None).await.unwrap();
         info!("initial balance: {} on block: {}", initial_balance, api.block_number().unwrap());
 
         // mine new block
         let _ = api.evm_mine(None).await;
 
         // add 10 eth for creator address
-        api.anvil_set_balance(creator, U256::from(10e18 as u64)).await.unwrap();
-        let faked_balance = provider.get_balance(creator, None).await.unwrap();
+        api.anvil_set_balance(real_owner, U256::from(10e18 as u64)).await.unwrap();
+        let faked_balance = provider.get_balance(real_owner, None).await.unwrap();
         info!("faked_balance: {} on block: {}", faked_balance, api.block_number().unwrap());
 
         info!("executed successfully");
