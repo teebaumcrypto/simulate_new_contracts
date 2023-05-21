@@ -1,5 +1,6 @@
 pub mod anvil_fork;
 pub mod settings;
+pub mod token_methods;
 
 use crate::settings::Settings;
 use lazy_static::{lazy_static};
