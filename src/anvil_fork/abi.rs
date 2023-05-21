@@ -20,5 +20,6 @@ abigen!(
     r#"[
         balanceOf(address)(uint256)
         owner()(address)
+        approve(address spender, uint256 amount)(bool)
     ]"#,
 );
