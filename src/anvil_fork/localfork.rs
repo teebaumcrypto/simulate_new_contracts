@@ -4,9 +4,6 @@ use anvil::{eth::EthApi, spawn, NodeConfig, NodeHandle};
 
 use crate::SETTINGS;
 
-
-const BLOCK_NUMBER: u64 = 17_296_515u64;
-
 /// Represents an anvil fork of an anvil node
 #[allow(unused)]
 pub struct LocalFork {
@@ -34,8 +31,8 @@ impl LocalFork {
     }
 }
 
-pub fn fork_config() -> NodeConfig {
+pub fn fork_config(block_number: u64) -> NodeConfig {
     NodeConfig::default()
         .with_eth_rpc_url(Some(&SETTINGS.rpc_url))
-        .with_fork_block_number(Some(BLOCK_NUMBER))
+        .with_fork_block_number(Some(block_number))
 }
