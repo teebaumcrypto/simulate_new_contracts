@@ -4,7 +4,7 @@ use anvil::spawn;
 use anyhow::Result;
 use ethers::{
     providers::Middleware,
-    types::{transaction::eip2718::TypedTransaction, H160, U256},
+    types::{transaction::eip2718::TypedTransaction, H160, U256, Address},
 };
 use simulate_new_contracts::{
     anvil_fork::{
@@ -13,10 +13,10 @@ use simulate_new_contracts::{
     },
     preload_lazy_static,
     token_methods::{create_and_send_tx, get_owner_with_balance},
-    SETTINGS,
+    SETTINGS, ONE_ETH, TEN_ETH,
 };
 use tokio::runtime::Runtime;
-use tracing::info;
+use tracing::{info, warn};
 
 fn main() -> Result<()> {
     // preload all global variables
@@ -39,27 +39,31 @@ fn main() -> Result<()> {
 
     // spawn a blocked thread so the program won't quit
     rt.block_on(async move {
-        let (api, handle) = spawn(fork_config(block_number)).await;
-
-        let provider: Arc<ethers::providers::Provider<ethers::providers::Http>> =
-            Arc::new(handle.http_provider());
         let real_owner: H160;
         let balance: U256;
+        // create a anvil fork on block number
+        let (api, handle) = spawn(fork_config(block_number)).await;
+
+        // get the http provider handle for making calls
+        let provider: Arc<ethers::providers::Provider<ethers::providers::Http>> =
+            Arc::new(handle.http_provider());
+        
+        // get the real owner with balance
         if let Ok(tuple) = get_owner_with_balance(provider.clone(), token, creator).await {
             real_owner = tuple.0;
             balance = tuple.1;
         } else {
             panic!("Couldn't fetch owner with balance");
         }
-        println!("real_owner:    {:?}", real_owner);
-        println!("balance owner: {:?}", balance);
+
         // impersonate real owner
         api.anvil_impersonate_account(real_owner).await.unwrap();
 
-        // add 10 eth for creator address
-        api.anvil_set_balance(real_owner, U256::from(10e18 as u64))
+        // add 10 eth for real owner
+        api.anvil_set_balance(real_owner, *TEN_ETH)
             .await
             .unwrap();
+
         let faked_balance = provider.get_balance(real_owner, None).await.unwrap();
         info!(
             "faked_balance: {} on block: {}",
@@ -79,34 +83,62 @@ fn main() -> Result<()> {
         // add Liquidity: impersonate real owner and add liquidity
         // create router with abi to interact (addLiquidity)
         let uniswap_router = UniswapV2Router::new(SETTINGS.router, Arc::clone(&provider));
-        let one_eth = U256::from(1000000000000000000u64);
         let add_liquidity_call = uniswap_router.add_liquidity_eth(
             token,
             balance,
             balance,
-            one_eth,
+            *ONE_ETH,
             real_owner,
             U256::from(1984669967u64),
         );
         // convert call to typed transaction
         let tx: TypedTransaction = add_liquidity_call.tx;
         // fill tx with infos + send it
-        let _ = create_and_send_tx(Arc::clone(&provider), tx, real_owner, Some(one_eth)).await;
+        match create_and_send_tx(Arc::clone(&provider), tx, real_owner, Some(*ONE_ETH)).await {
+            Ok(_) => info!("tx ok, waiting for new block"),
+            Err(e) => warn!("failed with error: {:?}", e)
+        }
 
         // mine new block
         let _ = api.evm_mine(None).await;
 
         // initiate the uniswap factory contract with a factory ABI
         let factory = UniswapV2Factory::new(SETTINGS.factory, Arc::clone(&provider));
-        // check if creator is owner of contract
+        // get pair address from the factory, WETH - TOKEN
         if let Ok(pair) = factory.get_pair(SETTINGS.weth, token).call().await {
-                info!("pair: {:?}", pair);
-                // initiate the uniswap pair contract with a pair ABI
-                let pair = PairContract::new(pair, Arc::clone(&provider));
-                if let Ok(reserves) = pair.get_reserves().call().await {
-                    info!("reserves: {:?}", reserves);
-                }
+            info!("pair: {:?}", pair);
+            // initiate the uniswap pair contract with a pair ABI
+            let pair = PairContract::new(pair, Arc::clone(&provider));
+            if let Ok(reserves) = pair.get_reserves().call().await {
+                info!("reserves: {:?}", reserves);
             }
+        }
+
+        // now we can check if we can execute swaps with another wallet
+        let random_addr = Address::random();
+        // impersonate the random address
+        api.anvil_impersonate_account(random_addr).await.unwrap();
+        // adding 10 eth for swapping
+        api.anvil_set_balance(random_addr, *TEN_ETH)
+            .await
+            .unwrap();
+        let swap_call = uniswap_router.swap_exact_eth_for_tokens(
+            U256::from(1),
+            vec![SETTINGS.weth,token],
+            random_addr,
+            U256::from(1984669967u64),
+        );
+        // convert call to typed transaction
+        let swap_tx: TypedTransaction = swap_call.tx;
+        match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH)).await {
+            Ok(_) => info!("tx ok, waiting for new block"),
+            Err(e) => warn!("failed with error: {:?}", e)
+        }
+
+
+        // mine new block
+        let _ = api.evm_mine(None).await;
+
         info!("executed successfully");
     });
 
