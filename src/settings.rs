@@ -23,6 +23,7 @@ pub struct Settings {
     pub rpc_url: String,
     pub router: H160,
     pub factory: H160,
+    pub weth: H160,
 }
 
 impl Default for Settings {
@@ -34,6 +35,7 @@ impl Default for Settings {
             rpc_url: args.rpc,
             router: H160::from_str(&args.router).unwrap(),
             factory: H160::from_str(&args.factory).unwrap(),
+            weth: H160::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
         }
     }
 }
@@ -42,6 +44,7 @@ impl std::fmt::Display for Settings {
         writeln!(f, "Simulator Settings")?;
         let _ = writeln!(f, "-> rpc:        {:?}", self.rpc_url);
         let _ = writeln!(f, "-> factory:    {:?}", self.factory);
-        writeln!(f, "-> router:     {:?}", self.router)
+        let _ = writeln!(f, "-> router:     {:?}", self.router);
+        writeln!(f,"-> weth:       {:?}", self.weth)
     }
 }
