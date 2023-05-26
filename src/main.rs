@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc, ops::{Mul, Div}};
 
 use anvil::spawn;
 use anyhow::Result;
@@ -158,26 +158,26 @@ fn main() -> Result<()> {
         }
 
         for i in (1..500).rev() {
-        let swap_call = uniswap_router.swap_eth_for_exact_tokens(
+            let swap_call = uniswap_router.swap_eth_for_exact_tokens(
                     U256::from(balance.mul(U256::from(i)).div(10000u32)),
-            vec![SETTINGS.weth,token],
-            random_addr,
-            U256::from(1984669967u64),
-        );
-        // convert call to typed transaction
-        let swap_tx: TypedTransaction = swap_call.tx;
+                vec![SETTINGS.weth,token],
+                random_addr,
+                U256::from(1984669967u64),
+            );
+            // convert call to typed transaction
+            let swap_tx: TypedTransaction = swap_call.tx;
 
-        match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH)).await {
-            Ok(_) => {
-                // mine new block
-                let _ = api.evm_mine(None).await;
-                
-                if let Ok(token_balance_random_addr) = token_contract.balance_of(random_addr).call().await {
-                    info!("token-balance of random addr: {}", token_balance_random_addr);
-                }
+            match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH)).await {
+                Ok(_) => {
+                    // mine new block
+                    let _ = api.evm_mine(None).await;
+                    
+                    if let Ok(token_balance_random_addr) = token_contract.balance_of(random_addr).call().await {
+                        info!("token-balance of random addr: {}", token_balance_random_addr);
+                    }
                         info!("swap tx {i} ok, waiting for new block");
                         break;
-            },
+                },
                     Err(_) => ()
             }
         }

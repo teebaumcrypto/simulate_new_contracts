@@ -16,11 +16,13 @@ Get total supply of token and use it for max tx amount
 
 Current questions:
 1. how to get max tx amount, iterate 90% 50% 30% 20% 10% 9%... 5% 4.5% ... 3% 2.9%..
---> is this fast enough?
+
+Answer: Test 50%, 20%, 10% 5%... 0.01% Takes around 3seconds -> prob can be optimized?
+
 
 6.Iterate through 10 blocks
-6.1. execute swap for fixed amount of tokens -> get balance after -> Tax Buy
-6.2. sell these tokens to the pool -> get balance after of pool -> Tax Sell
+- execute swap for fixed amount of tokens -> get balance after -> Tax Buy
+- sell these tokens to the pool -> get balance after of pool -> Tax Sell
 
 
 foundry link:
