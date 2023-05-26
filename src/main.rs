@@ -156,14 +156,17 @@ fn main() -> Result<()> {
             Ok(_) => info!("tx ok, waiting for new block"),
             Err(e) => warn!("failed with error: {:?}", e)
         }
+
+        for i in (1..500).rev() {
         let swap_call = uniswap_router.swap_eth_for_exact_tokens(
-            U256::from(balance/100),
+                    U256::from(balance.mul(U256::from(i)).div(10000u32)),
             vec![SETTINGS.weth,token],
             random_addr,
             U256::from(1984669967u64),
         );
         // convert call to typed transaction
         let swap_tx: TypedTransaction = swap_call.tx;
+
         match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH)).await {
             Ok(_) => {
                 // mine new block
@@ -172,9 +175,11 @@ fn main() -> Result<()> {
                 if let Ok(token_balance_random_addr) = token_contract.balance_of(random_addr).call().await {
                     info!("token-balance of random addr: {}", token_balance_random_addr);
                 }
-                info!("swap tx (1%) ok, waiting for new block");
+                        info!("swap tx {i} ok, waiting for new block");
+                        break;
             },
-            Err(e) => warn!("failed with error: {:?}", e)
+                    Err(_) => ()
+            }
         }
 
         // mine new block
