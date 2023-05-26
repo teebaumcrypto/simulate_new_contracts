@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc, ops::{Mul, Div}};
+use std::{str::FromStr, sync::Arc, ops::{Mul, Div, Sub}};
 
 use anvil::spawn;
 use anyhow::Result;
@@ -94,6 +94,8 @@ fn main() -> Result<()> {
         }
 
         let total_supply = token_contract.total_supply().call().await.unwrap();
+        let decimals = token_contract.decimals().call().await.unwrap();
+        let decimals_powed = U256::from(10u32).pow(decimals);
 
         // add Liquidity: impersonate real owner and add liquidity
         // create router with abi to interact (addLiquidity)
@@ -131,8 +133,15 @@ fn main() -> Result<()> {
             .unwrap();
 
         for i in (1..500).rev() {
+            let amount_out: U256;
+            // if total supply is smaller than pow of decimals the total supply is < 1 (e.g. 0.001)
+            if total_supply < decimals_powed {
+                amount_out = U256::from(total_supply.mul(U256::from(i)).div(10000u32));
+            } else {
+                amount_out = (U256::from(total_supply.mul(U256::from(i)).div(10000u32))).sub(decimals_powed);
+            }
             let swap_call = uniswap_router.swap_eth_for_exact_tokens(
-                U256::from(total_supply.mul(U256::from(i)).div(10000u32)),
+                amount_out,
                 vec![SETTINGS.weth,token],
                 random_addr,
                 U256::from(1984669967u64),

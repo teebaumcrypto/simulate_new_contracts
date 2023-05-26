@@ -23,6 +23,7 @@ abigen!(
     r#"[
         balanceOf(address)(uint256)
         totalSupply()(uint256)
+        decimals()(uint256)
         owner()(address)
         approve(address spender, uint256 amount)(bool)
         setTrading(bool _tradingOpen)
