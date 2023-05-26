@@ -166,6 +166,7 @@ pub async fn simulate_contract(
     for i in (1..500).rev() {
         let amount_out: U256;
         // if total supply is smaller than pow of decimals the total supply is < 1 (e.g. 0.001)
+        // we remove 1 token because some contracts have the limit with "smaller then", rather than "smaller or equal then"
         if token_total_supply < token_decimals_powed {
             amount_out = U256::from(token_total_supply.mul(U256::from(i)).div(10000u32));
         } else {
