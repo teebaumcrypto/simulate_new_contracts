@@ -23,7 +23,7 @@ use simulate_new_contracts::{
     ONE_ETH, SETTINGS, TEN_ETH,
 };
 use tokio::runtime::Runtime;
-use tracing::{info, warn};
+use tracing::info;
 use tracing_subscriber::{
     prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
@@ -85,7 +85,7 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) ->
             real_owner = tuple.0;
             balance = tuple.1;
         } else {
-            panic!("Couldn't fetch owner with balance");
+            return Err(anyhow!("Couldn't fetch owner with balance"));
         }
 
         // impersonate real owner
@@ -107,10 +107,8 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) ->
         let tx: TypedTransaction = approve_call.tx;
         // fill tx with infos + send it
         match create_and_send_tx(Arc::clone(&provider), tx, real_owner, None).await {
-        Ok(_) => info!("approval tx ok"),
-        Err(e) => {
-            return Err(anyhow!("Approve failed with error: {e:?}"))
-        }
+            Ok(_) => info!("approval tx ok"),
+            Err(e) => return Err(anyhow!("Approve failed with error: {e:?}")),
         }
 
         // add Liquidity: impersonate real owner and add liquidity
@@ -129,7 +127,7 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) ->
         // fill tx with infos + send it
         match create_and_send_tx(Arc::clone(&provider), tx, real_owner, Some(*ONE_ETH)).await {
             Ok(_) => info!("liquidity add tx ok, waiting for new block"),
-            Err(e) => warn!("failed with error: {:?}", e),
+            Err(e) => return Err(anyhow!("Add Liquidity failed with error: {e:?}")),
         }
 
     // will be set via user input, direct calldata so it can be changed in runtime and doesn't have to be in the ABI
@@ -143,7 +141,8 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) ->
         data: Some(bytes.into()),
         ..Default::default()
     });
-        // fill tx with infos + send it
+
+    // fill tx with infos + send it
     let _ = create_and_send_tx(Arc::clone(&provider), tx_trading_open, real_owner, None).await;
 
         // now we can check if we can execute swaps with another wallet
@@ -190,14 +189,14 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) ->
         info!("current_basispoint_amount: {}", current_basispoint_amount);
         
         if current_basispoint == 0u32 {
-            panic!("Couldn't execute swap");
+            return Err(anyhow!("Swap couldn't get executed"));
         }
 
-                    // mine new block
-                    let _ = api.evm_mine(None).await;
+        // mine new block
+        let _ = api.evm_mine(None).await;
         info!("mined new block");
                     
-                    if let Ok(token_balance_random_addr) = token_contract.balance_of(random_addr).call().await {
+        if let Ok(token_balance_random_addr) = token_contract.balance_of(random_addr).call().await {
             info!(
                 "token-balance of random addr: {}",
                 token_balance_random_addr
