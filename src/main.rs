@@ -5,10 +5,13 @@ use std::{
 };
 
 use anvil::spawn;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use ethers::{
     providers::Middleware,
-    types::{transaction::eip2718::TypedTransaction, Address, H160, U256},
+    types::{
+        transaction::eip2718::TypedTransaction, Address, Eip1559TransactionRequest, H160, U256,
+    },
+    utils::hex,
 };
 use simulate_new_contracts::{
     anvil_fork::{
@@ -54,6 +57,13 @@ fn main() -> Result<()> {
 
     // spawn a blocked thread so the program won't quit
     rt.block_on(async move {
+        let _ = simulate_contract(creator, token, block_number).await;
+    });
+
+    Ok(())
+}
+
+pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) -> Result<()> {
         let real_owner: H160;
         let balance: U256;
         // create a anvil fork on block number
@@ -63,6 +73,13 @@ fn main() -> Result<()> {
         let provider: Arc<ethers::providers::Provider<ethers::providers::Http>> =
             Arc::new(handle.http_provider());
         
+    // create token contract instance via ABI
+    let token_contract = TokenContract::new(token, Arc::clone(&provider));
+    // get token infos
+    let token_total_supply = token_contract.total_supply().call().await.unwrap();
+    let token_decimals = token_contract.decimals().call().await.unwrap();
+    let token_decimals_powed = U256::from(10u32).pow(token_decimals);
+
         // get the real owner with balance
         if let Ok(tuple) = get_owner_with_balance(provider.clone(), token, creator).await {
             real_owner = tuple.0;
@@ -84,21 +101,16 @@ fn main() -> Result<()> {
             api.block_number().unwrap()
         );
 
-        // create token contract instance via ABI
-        let token_contract = TokenContract::new(token, Arc::clone(&provider));
-        // get token infos
-        let token_total_supply = token_contract.total_supply().call().await.unwrap();
-        let token_decimals = token_contract.decimals().call().await.unwrap();
-        let token_decimals_powed = U256::from(10u32).pow(token_decimals);
-        
         // create approve transaction
         let approve_call = token_contract.approve(SETTINGS.router, U256::MAX);
         // convert call to typed transaction
         let tx: TypedTransaction = approve_call.tx;
         // fill tx with infos + send it
         match create_and_send_tx(Arc::clone(&provider), tx, real_owner, None).await {
-            Ok(_) => info!("approval tx ok, waiting for new block"),
-            Err(e) => warn!("failed with error: {:?}", e),
+        Ok(_) => info!("approval tx ok"),
+        Err(e) => {
+            return Err(anyhow!("Approve failed with error: {e:?}"))
+        }
         }
 
         // add Liquidity: impersonate real owner and add liquidity
@@ -156,8 +168,7 @@ fn main() -> Result<()> {
             // convert call to typed transaction
             let swap_tx: TypedTransaction = swap_call.tx;
 
-            match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH))
-                .await
+        match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH)).await
             {
                 Ok(_) => {
                     current_basispoint_amount = amount_out;
@@ -205,8 +216,5 @@ fn main() -> Result<()> {
         }
 
         info!("executed successfully");
-    });
-
-    info!("Finished everything");
     Ok(())
 }
