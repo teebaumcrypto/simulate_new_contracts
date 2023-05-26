@@ -45,6 +45,6 @@ impl std::fmt::Display for Settings {
         let _ = writeln!(f, "-> rpc:        {:?}", self.rpc_url);
         let _ = writeln!(f, "-> factory:    {:?}", self.factory);
         let _ = writeln!(f, "-> router:     {:?}", self.router);
-        writeln!(f,"-> weth:       {:?}", self.weth)
+        writeln!(f, "-> weth:       {:?}", self.weth)
     }
 }

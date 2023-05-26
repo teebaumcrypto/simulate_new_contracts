@@ -17,9 +17,7 @@ pub async fn create_and_send_tx(
         typed_tx.set_value(eth_value);
     };
     typed_tx.set_from(from);
-    provider
-        .fill_transaction(&mut typed_tx, None)
-        .await?;
+    provider.fill_transaction(&mut typed_tx, None).await?;
     let _ = provider.send_transaction(typed_tx, None).await;
     Ok(())
 }

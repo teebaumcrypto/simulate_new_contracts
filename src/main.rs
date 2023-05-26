@@ -1,26 +1,31 @@
-use std::{str::FromStr, sync::Arc, ops::{Mul, Div, Sub}};
+use std::{
+    ops::{Div, Mul, Sub},
+    str::FromStr,
+    sync::Arc,
+};
 
 use anvil::spawn;
 use anyhow::Result;
 use ethers::{
     providers::Middleware,
-    types::{transaction::eip2718::TypedTransaction, H160, U256, Address},
+    types::{transaction::eip2718::TypedTransaction, Address, H160, U256},
 };
 use simulate_new_contracts::{
     anvil_fork::{
-        abi::{TokenContract, UniswapV2Router, PairContract, UniswapV2Factory},
+        abi::{PairContract, TokenContract, UniswapV2Factory, UniswapV2Router},
         localfork::fork_config,
     },
     preload_lazy_static,
     token_methods::{create_and_send_tx, get_owner_with_balance},
-    SETTINGS, ONE_ETH, TEN_ETH,
+    ONE_ETH, SETTINGS, TEN_ETH,
 };
 use tokio::runtime::Runtime;
 use tracing::{info, warn};
-use tracing_subscriber::{EnvFilter, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{
+    prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, EnvFilter,
+};
 
 fn main() -> Result<()> {
-
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
         .with(
@@ -70,9 +75,7 @@ fn main() -> Result<()> {
         api.anvil_impersonate_account(real_owner).await.unwrap();
 
         // add 10 eth for real owner
-        api.anvil_set_balance(real_owner, *TEN_ETH)
-            .await
-            .unwrap();
+        api.anvil_set_balance(real_owner, *TEN_ETH).await.unwrap();
 
         let faked_balance = provider.get_balance(real_owner, None).await.unwrap();
         info!(
@@ -95,7 +98,7 @@ fn main() -> Result<()> {
         // fill tx with infos + send it
         match create_and_send_tx(Arc::clone(&provider), tx, real_owner, None).await {
             Ok(_) => info!("approval tx ok, waiting for new block"),
-            Err(e) => warn!("failed with error: {:?}", e)
+            Err(e) => warn!("failed with error: {:?}", e),
         }
 
         // add Liquidity: impersonate real owner and add liquidity
@@ -114,7 +117,7 @@ fn main() -> Result<()> {
         // fill tx with infos + send it
         match create_and_send_tx(Arc::clone(&provider), tx, real_owner, Some(*ONE_ETH)).await {
             Ok(_) => info!("liquidity add tx ok, waiting for new block"),
-            Err(e) => warn!("failed with error: {:?}", e)
+            Err(e) => warn!("failed with error: {:?}", e),
         }
 
         // create set trading transaction
@@ -129,9 +132,7 @@ fn main() -> Result<()> {
         // impersonate the random address
         api.anvil_impersonate_account(random_addr).await.unwrap();
         // adding 10 eth for swapping
-        api.anvil_set_balance(random_addr, *TEN_ETH)
-            .await
-            .unwrap();
+        api.anvil_set_balance(random_addr, *TEN_ETH).await.unwrap();
 
         let mut current_basispoint_amount: U256 = U256::zero();
         let mut current_basispoint = 0u32;
@@ -142,25 +143,28 @@ fn main() -> Result<()> {
             if token_total_supply < token_decimals_powed {
                 amount_out = U256::from(token_total_supply.mul(U256::from(i)).div(10000u32));
             } else {
-                amount_out = (U256::from(token_total_supply.mul(U256::from(i)).div(10000u32))).sub(token_decimals_powed);
+                amount_out = (U256::from(token_total_supply.mul(U256::from(i)).div(10000u32)))
+                    .sub(token_decimals_powed);
             }
 
             let swap_call = uniswap_router.swap_eth_for_exact_tokens(
                 amount_out,
-                vec![SETTINGS.weth,token],
+                vec![SETTINGS.weth, token],
                 random_addr,
                 U256::from(1984669967u64),
             );
             // convert call to typed transaction
             let swap_tx: TypedTransaction = swap_call.tx;
 
-            match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH)).await {
+            match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH))
+                .await
+            {
                 Ok(_) => {
                     current_basispoint_amount = amount_out;
                     current_basispoint = i;
                     break;
-                },
-                    Err(_) => ()
+                }
+                Err(_) => (),
             }
         }
 
@@ -171,17 +175,20 @@ fn main() -> Result<()> {
             panic!("Couldn't execute swap");
         }
 
-        
                     // mine new block
                     let _ = api.evm_mine(None).await;
         info!("mined new block");
                     
                     if let Ok(token_balance_random_addr) = token_contract.balance_of(random_addr).call().await {
-                        info!("token-balance of random addr: {}", token_balance_random_addr);
+            info!(
+                "token-balance of random addr: {}",
+                token_balance_random_addr
+            );
             // multiply amount real out with 100, divide by amount given in input
             // 100 - sub this, will give the percentage of fees
             // if output = input (example: 200 tokens= 20'000 / 200 = 100, 100-100 = 0 => 0% fee )
-            let buy_fee = U256::from(100u32).sub(token_balance_random_addr.mul(100u32)/current_basispoint_amount);
+            let buy_fee = U256::from(100u32)
+                .sub(token_balance_random_addr.mul(100u32) / current_basispoint_amount);
             info!("buy fee: {}", buy_fee);
         }
 
@@ -196,7 +203,6 @@ fn main() -> Result<()> {
                 info!("reserves: {:?}", reserves);
             }
         }
-        
 
         info!("executed successfully");
     });

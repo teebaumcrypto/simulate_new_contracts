@@ -4,7 +4,7 @@ pub mod token_methods;
 
 use crate::settings::Settings;
 use ethers::types::U256;
-use lazy_static::{lazy_static, initialize};
+use lazy_static::{initialize, lazy_static};
 
 pub fn preload_lazy_static() {
     // load and print the settings
