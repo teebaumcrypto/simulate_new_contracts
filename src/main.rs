@@ -66,7 +66,12 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-pub async fn simulate_contract(creator: H160, token: H160, block_number: u64, trading_open_hex_data: Option<&str>) -> Result<()> {
+pub async fn simulate_contract(
+    creator: H160,
+    token: H160,
+    block_number: u64,
+    trading_open_hex_data: Option<&str>,
+) -> Result<()> {
     let real_owner: H160;
     let balance: U256;
     // create a anvil fork on block number
@@ -75,7 +80,7 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64, tr
     // get the http provider handle for making calls
     let provider: Arc<ethers::providers::Provider<ethers::providers::Http>> =
         Arc::new(handle.http_provider());
-        
+
     // create token contract instance via ABI
     let token_contract = TokenContract::new(token, Arc::clone(&provider));
     // get token infos
@@ -177,7 +182,7 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64, tr
         // convert call to typed transaction
         let swap_tx: TypedTransaction = swap_call.tx;
 
-    match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH)).await
+        match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH)).await
         {
             Ok(_) => {
                 current_basispoint_amount = amount_out;
@@ -190,7 +195,7 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64, tr
 
     info!("current_basispoint: {}", current_basispoint);
     info!("current_basispoint_amount: {}", current_basispoint_amount);
-    
+
     if current_basispoint == 0u32 {
         return Err(anyhow!("Swap couldn't get executed"));
     }
