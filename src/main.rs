@@ -60,13 +60,13 @@ fn main() -> Result<()> {
 
     // spawn a blocked thread so the program won't quit
     rt.block_on(async move {
-        let _ = simulate_contract(creator, token, block_number, trading_open_hex_data).await;
+        let _ = simulate_contract(creator, token, block_number, Some(trading_open_hex_data)).await;
     });
 
     Ok(())
 }
 
-pub async fn simulate_contract(creator: H160, token: H160, block_number: u64, trading_open_hex_data: &str) -> Result<()> {
+pub async fn simulate_contract(creator: H160, token: H160, block_number: u64, trading_open_hex_data: Option<&str>) -> Result<()> {
     let real_owner: H160;
     let balance: U256;
     // create a anvil fork on block number
@@ -133,18 +133,20 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64, tr
         Err(e) => return Err(anyhow!("Add Liquidity failed with error: {e:?}")),
     }
 
-    // convert into bytes with ethers hex crate, remove 0x
-    let bytes = hex::decode(&trading_open_hex_data[2..])?;
+    if let Some(trading_calldata) = trading_open_hex_data {
+        // convert into bytes with ethers hex crate, remove 0x
+        let bytes = hex::decode(&trading_calldata[2..])?;
 
-    // create EIP1559 - TypedTransaction to send
-    let tx_trading_open = TypedTransaction::Eip1559(Eip1559TransactionRequest {
-        to: Some(ethers::types::NameOrAddress::Address(token)),
-        data: Some(bytes.into()),
-        ..Default::default()
-    });
+        // create EIP1559 - TypedTransaction to send
+        let tx_trading_open = TypedTransaction::Eip1559(Eip1559TransactionRequest {
+            to: Some(ethers::types::NameOrAddress::Address(token)),
+            data: Some(bytes.into()),
+            ..Default::default()
+        });
 
-    // fill tx with infos + send it
-    let _ = create_and_send_tx(Arc::clone(&provider), tx_trading_open, real_owner, None).await;
+        // fill tx with infos + send it
+        let _ = create_and_send_tx(Arc::clone(&provider), tx_trading_open, real_owner, None).await;
+    }
 
     // now we can check if we can execute swaps with another wallet
     let random_addr = Address::random();
