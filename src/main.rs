@@ -132,12 +132,19 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) ->
             Err(e) => warn!("failed with error: {:?}", e),
         }
 
-        // create set trading transaction
-        let set_trading_call = token_contract.set_trading(true);
-        // convert call to typed transaction
-        let tx: TypedTransaction = set_trading_call.tx;
+    // will be set via user input, direct calldata so it can be changed in runtime and doesn't have to be in the ABI
+    let trading_open_hex_data = "0x8f70ccf70000000000000000000000000000000000000000000000000000000000000001";
+    // convert into bytes with ethers hex crate, remove 0x
+    let bytes = hex::decode(&trading_open_hex_data[2..]).unwrap();
+
+    // create EIP1559 - TypedTransaction to send
+    let tx_trading_open = TypedTransaction::Eip1559(Eip1559TransactionRequest {
+        to: Some(ethers::types::NameOrAddress::Address(token)),
+        data: Some(bytes.into()),
+        ..Default::default()
+    });
         // fill tx with infos + send it
-        let _ = create_and_send_tx(Arc::clone(&provider), tx, real_owner, None).await;
+    let _ = create_and_send_tx(Arc::clone(&provider), tx_trading_open, real_owner, None).await;
 
         // now we can check if we can execute swaps with another wallet
         let random_addr = Address::random();
