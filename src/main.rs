@@ -76,8 +76,8 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) ->
     // create token contract instance via ABI
     let token_contract = TokenContract::new(token, Arc::clone(&provider));
     // get token infos
-    let token_total_supply = token_contract.total_supply().call().await.unwrap();
-    let token_decimals = token_contract.decimals().call().await.unwrap();
+    let token_total_supply = token_contract.total_supply().call().await?;
+    let token_decimals = token_contract.decimals().call().await?;
     let token_decimals_powed = U256::from(10u32).pow(token_decimals);
 
         // get the real owner with balance
@@ -89,16 +89,16 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) ->
         }
 
         // impersonate real owner
-        api.anvil_impersonate_account(real_owner).await.unwrap();
+        api.anvil_impersonate_account(real_owner).await?;
 
         // add 10 eth for real owner
-        api.anvil_set_balance(real_owner, *TEN_ETH).await.unwrap();
+        api.anvil_set_balance(real_owner, *TEN_ETH).await?;
 
-        let faked_balance = provider.get_balance(real_owner, None).await.unwrap();
+        let faked_balance = provider.get_balance(real_owner, None).await?;
         info!(
             "faked_balance: {} on block: {}",
             faked_balance,
-            api.block_number().unwrap()
+            api.block_number()?
         );
 
         // create approve transaction
@@ -133,7 +133,7 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) ->
     // will be set via user input, direct calldata so it can be changed in runtime and doesn't have to be in the ABI
     let trading_open_hex_data = "0x8f70ccf70000000000000000000000000000000000000000000000000000000000000001";
     // convert into bytes with ethers hex crate, remove 0x
-    let bytes = hex::decode(&trading_open_hex_data[2..]).unwrap();
+    let bytes = hex::decode(&trading_open_hex_data[2..])?;
 
     // create EIP1559 - TypedTransaction to send
     let tx_trading_open = TypedTransaction::Eip1559(Eip1559TransactionRequest {
@@ -148,9 +148,9 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) ->
         // now we can check if we can execute swaps with another wallet
         let random_addr = Address::random();
         // impersonate the random address
-        api.anvil_impersonate_account(random_addr).await.unwrap();
+        api.anvil_impersonate_account(random_addr).await?;
         // adding 10 eth for swapping
-        api.anvil_set_balance(random_addr, *TEN_ETH).await.unwrap();
+        api.anvil_set_balance(random_addr, *TEN_ETH).await?;
 
         let mut current_basispoint_amount: U256 = U256::zero();
         let mut current_basispoint = 0u32;
