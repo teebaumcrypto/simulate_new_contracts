@@ -17,8 +17,18 @@ use simulate_new_contracts::{
 };
 use tokio::runtime::Runtime;
 use tracing::{info, warn};
+use tracing_subscriber::{EnvFilter, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
 fn main() -> Result<()> {
+
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(
+            EnvFilter::from_default_env()
+            .add_directive("node=off".parse().unwrap())
+        )
+        .init();
+
     // preload all global variables
     preload_lazy_static();
 
