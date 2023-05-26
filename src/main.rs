@@ -51,22 +51,25 @@ fn main() -> Result<()> {
     let token = H160::from_str("0x2706fd8a70affe732e6c6955d8c47f875b754d2f").unwrap();
     let block_number = 17307367u64;
 
+    // will be set via user input, direct calldata so it can be changed in runtime and doesn't have to be in the ABI
+    let trading_open_hex_data = "0x8f70ccf70000000000000000000000000000000000000000000000000000000000000001";
+
     // Create the runtime
     // we don't want to run full async
     let rt: Runtime = Runtime::new().unwrap();
 
     // spawn a blocked thread so the program won't quit
     rt.block_on(async move {
-        let _ = simulate_contract(creator, token, block_number).await;
+        let _ = simulate_contract(creator, token, block_number, trading_open_hex_data).await;
     });
 
     Ok(())
 }
 
-pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) -> Result<()> {
-        let real_owner: H160;
-        let balance: U256;
-        // create a anvil fork on block number
+pub async fn simulate_contract(creator: H160, token: H160, block_number: u64, trading_open_hex_data: &str) -> Result<()> {
+    let real_owner: H160;
+    let balance: U256;
+    // create a anvil fork on block number
         let (api, handle) = spawn(fork_config(block_number)).await;
 
         // get the http provider handle for making calls
@@ -130,8 +133,6 @@ pub async fn simulate_contract(creator: H160, token: H160, block_number: u64) ->
             Err(e) => return Err(anyhow!("Add Liquidity failed with error: {e:?}")),
         }
 
-    // will be set via user input, direct calldata so it can be changed in runtime and doesn't have to be in the ABI
-    let trading_open_hex_data = "0x8f70ccf70000000000000000000000000000000000000000000000000000000000000001";
     // convert into bytes with ethers hex crate, remove 0x
     let bytes = hex::decode(&trading_open_hex_data[2..])?;
 
