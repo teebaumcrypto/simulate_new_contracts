@@ -93,6 +93,7 @@ fn main() -> Result<()> {
             Err(e) => warn!("failed with error: {:?}", e)
         }
 
+        let total_supply = token_contract.total_supply().call().await.unwrap();
 
         // add Liquidity: impersonate real owner and add liquidity
         // create router with abi to interact (addLiquidity)
@@ -113,28 +114,12 @@ fn main() -> Result<()> {
             Err(e) => warn!("failed with error: {:?}", e)
         }
 
-        // mine new block
-        let _ = api.evm_mine(None).await;
-
-        // initiate the uniswap factory contract with a factory ABI
-        let factory = UniswapV2Factory::new(SETTINGS.factory, Arc::clone(&provider));
-        // get pair address from the factory, WETH - TOKEN
-        if let Ok(pair) = factory.get_pair(SETTINGS.weth, token).call().await {
-            info!("pair: {:?}", pair);
-            // initiate the uniswap pair contract with a pair ABI
-            let pair = PairContract::new(pair, Arc::clone(&provider));
-            if let Ok(reserves) = pair.get_reserves().call().await {
-                info!("reserves: {:?}", reserves);
-            }
-        }
-        
-        // create approve transaction
+        // create set trading transaction
         let set_trading_call = token_contract.set_trading(true);
         // convert call to typed transaction
         let tx: TypedTransaction = set_trading_call.tx;
         // fill tx with infos + send it
         let _ = create_and_send_tx(Arc::clone(&provider), tx, real_owner, None).await;
-
 
         // now we can check if we can execute swaps with another wallet
         let random_addr = Address::random();
@@ -144,22 +129,10 @@ fn main() -> Result<()> {
         api.anvil_set_balance(random_addr, *TEN_ETH)
             .await
             .unwrap();
-        let swap_call = uniswap_router.swap_exact_eth_for_tokens(
-            U256::from(1),
-            vec![SETTINGS.weth,token],
-            random_addr,
-            U256::from(1984669967u64),
-        );
-        // convert call to typed transaction
-        let swap_tx: TypedTransaction = swap_call.tx;
-        match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH)).await {
-            Ok(_) => info!("tx ok, waiting for new block"),
-            Err(e) => warn!("failed with error: {:?}", e)
-        }
 
         for i in (1..500).rev() {
             let swap_call = uniswap_router.swap_eth_for_exact_tokens(
-                    U256::from(balance.mul(U256::from(i)).div(10000u32)),
+                U256::from(total_supply.mul(U256::from(i)).div(10000u32)),
                 vec![SETTINGS.weth,token],
                 random_addr,
                 U256::from(1984669967u64),
@@ -175,15 +148,25 @@ fn main() -> Result<()> {
                     if let Ok(token_balance_random_addr) = token_contract.balance_of(random_addr).call().await {
                         info!("token-balance of random addr: {}", token_balance_random_addr);
                     }
-                        info!("swap tx {i} ok, waiting for new block");
-                        break;
+                    info!("swap tx {i} ok, waiting for new block");
+                    break;
                 },
                     Err(_) => ()
             }
         }
 
-        // mine new block
-        let _ = api.evm_mine(None).await;
+        // initiate the uniswap factory contract with a factory ABI
+        let factory = UniswapV2Factory::new(SETTINGS.factory, Arc::clone(&provider));
+        // get pair address from the factory, WETH - TOKEN
+        if let Ok(pair) = factory.get_pair(SETTINGS.weth, token).call().await {
+            info!("pair: {:?}", pair);
+            // initiate the uniswap pair contract with a pair ABI
+            let pair = PairContract::new(pair, Arc::clone(&provider));
+            if let Ok(reserves) = pair.get_reserves().call().await {
+                info!("reserves: {:?}", reserves);
+            }
+        }
+        
 
         info!("executed successfully");
     });
