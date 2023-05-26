@@ -83,6 +83,11 @@ fn main() -> Result<()> {
 
         // create token contract instance via ABI
         let token_contract = TokenContract::new(token, Arc::clone(&provider));
+        // get token infos
+        let token_total_supply = token_contract.total_supply().call().await.unwrap();
+        let token_decimals = token_contract.decimals().call().await.unwrap();
+        let token_decimals_powed = U256::from(10u32).pow(token_decimals);
+        
         // create approve transaction
         let approve_call = token_contract.approve(SETTINGS.router, U256::MAX);
         // convert call to typed transaction
@@ -92,10 +97,6 @@ fn main() -> Result<()> {
             Ok(_) => info!("approval tx ok, waiting for new block"),
             Err(e) => warn!("failed with error: {:?}", e)
         }
-
-        let total_supply = token_contract.total_supply().call().await.unwrap();
-        let decimals = token_contract.decimals().call().await.unwrap();
-        let decimals_powed = U256::from(10u32).pow(decimals);
 
         // add Liquidity: impersonate real owner and add liquidity
         // create router with abi to interact (addLiquidity)
@@ -132,14 +133,18 @@ fn main() -> Result<()> {
             .await
             .unwrap();
 
+        let mut current_basispoint_amount: U256 = U256::zero();
+        let mut current_basispoint = 0u32;
+
         for i in (1..500).rev() {
             let amount_out: U256;
             // if total supply is smaller than pow of decimals the total supply is < 1 (e.g. 0.001)
-            if total_supply < decimals_powed {
-                amount_out = U256::from(total_supply.mul(U256::from(i)).div(10000u32));
+            if token_total_supply < token_decimals_powed {
+                amount_out = U256::from(token_total_supply.mul(U256::from(i)).div(10000u32));
             } else {
-                amount_out = (U256::from(total_supply.mul(U256::from(i)).div(10000u32))).sub(decimals_powed);
+                amount_out = (U256::from(token_total_supply.mul(U256::from(i)).div(10000u32))).sub(token_decimals_powed);
             }
+
             let swap_call = uniswap_router.swap_eth_for_exact_tokens(
                 amount_out,
                 vec![SETTINGS.weth,token],
@@ -151,17 +156,33 @@ fn main() -> Result<()> {
 
             match create_and_send_tx(Arc::clone(&provider), swap_tx, random_addr, Some(*ONE_ETH)).await {
                 Ok(_) => {
-                    // mine new block
-                    let _ = api.evm_mine(None).await;
-                    
-                    if let Ok(token_balance_random_addr) = token_contract.balance_of(random_addr).call().await {
-                        info!("token-balance of random addr: {}", token_balance_random_addr);
-                    }
-                    info!("swap tx {i} ok, waiting for new block");
+                    current_basispoint_amount = amount_out;
+                    current_basispoint = i;
                     break;
                 },
                     Err(_) => ()
             }
+        }
+
+        info!("current_basispoint: {}", current_basispoint);
+        info!("current_basispoint_amount: {}", current_basispoint_amount);
+        
+        if current_basispoint == 0u32 {
+            panic!("Couldn't execute swap");
+        }
+
+        
+                    // mine new block
+                    let _ = api.evm_mine(None).await;
+        info!("mined new block");
+                    
+                    if let Ok(token_balance_random_addr) = token_contract.balance_of(random_addr).call().await {
+                        info!("token-balance of random addr: {}", token_balance_random_addr);
+            // multiply amount real out with 100, divide by amount given in input
+            // 100 - sub this, will give the percentage of fees
+            // if output = input (example: 200 tokens= 20'000 / 200 = 100, 100-100 = 0 => 0% fee )
+            let buy_fee = U256::from(100u32).sub(token_balance_random_addr.mul(100u32)/current_basispoint_amount);
+            info!("buy fee: {}", buy_fee);
         }
 
         // initiate the uniswap factory contract with a factory ABI
